@@ -1,0 +1,558 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Pathways: The Journey of Life</title>
+<script src="https://cdn.jsdelivr.net/pyodide/v0.23.4/full/pyodide.js"></script>
+<style>
+    body {
+        font-family: Arial, sans-serif;
+        background: #f9f9f9;
+        padding: 20px;
+    }
+    #game-output {
+        white-space: pre-wrap;
+        background: #fff;
+        border: 1px solid #ccc;
+        padding: 10px;
+        width: 80%;
+        height: 500px;
+        overflow: auto;
+        font-size: 14px;
+    }
+    #start-btn {
+        margin: 10px 0;
+        padding: 10px 20px;
+        font-size: 16px;
+    }
+</style>
+</head>
+<body>
+<h1>Pathways: The Journey of Life</h1>
+<p>Click "Start Game" to begin. Input will be collected via prompt dialogs. Outputs appear below.</p>
+<button id="start-btn">Start Game</button>
+<pre id="game-output"></pre>
+<script type="text/python">
+import random
+import sys
+from js import document, prompt
+
+output_element = document.getElementById("game-output")
+
+def print(*args, **kwargs):
+    text = " ".join(str(a) for a in args)
+    output_element.innerHTML += text + "\\n"
+    output_element.scrollTop = output_element.scrollHeight
+
+def input(prompt_text=""):
+    user_input = prompt(prompt_text)
+    if user_input is None:
+        user_input = ""
+    return user_input.strip()
+
+class Player:
+    def __init__(self, name):
+        self.name = name
+        self.age = 15
+        self.months = 0
+        self.health = 100
+        self.happiness = 50
+        self.math_skills = 10
+        self.social_skills = 10
+        self.verbal_skills = 10
+        self.other_skills = 10
+        self.wealth = 0
+        self.karma = 0
+        self.relationship = 0
+        self.turns = 0
+        self.relationships = {}
+        self.items = []
+        self.last_exercise_turn = -6
+        self.path = "student"
+
+    def age_up(self):
+        self.age += self.months // 12
+        self.months = self.months % 12
+        if self.months == 0 and self.turns != 0 and self.turns % 12 == 0:
+            print(f"\\nHappy Birthday! You are now {self.age} years old.")
+
+    def display_stats(self):
+        print(f"\\n--- {self.name}'s Stats ---")
+        print(f"Age: {self.age} years {self.months} months")
+        print(f"Health: {self.health}")
+        print(f"Happiness: {self.happiness}")
+        print(f"Math Skills: {self.math_skills}")
+        print(f"Social Skills: {self.social_skills}")
+        print(f"Verbal Skills: {self.verbal_skills}")
+        print(f"Other Skills: {self.other_skills}")
+        print(f"Wealth: {self.wealth} {'(In Debt!)' if self.wealth < 0 else ''}")
+        print(f"Karma: {self.karma}")
+        if self.age >= 18:
+            print(f"Relationship: {self.relationship}")
+
+    def update_stats(self,
+                     health=0,
+                     happiness=0,
+                     math_skills=0,
+                     social_skills=0,
+                     verbal_skills=0,
+                     other_skills=0,
+                     wealth=0,
+                     karma=0,
+                     relationship=0):
+
+        def diminished_gain(current, increment):
+            if current >= 80:
+                increment = max(1, increment // 2)
+            return increment
+
+        math_skills = diminished_gain(self.math_skills, math_skills)
+        social_skills = diminished_gain(self.social_skills, social_skills)
+        verbal_skills = diminished_gain(self.verbal_skills, verbal_skills)
+        other_skills = diminished_gain(self.other_skills, other_skills)
+
+        self.health = min(100, max(0, self.health + health))
+        self.happiness = min(100, max(0, self.happiness + happiness))
+        self.math_skills = min(100, max(0, self.math_skills + math_skills))
+        self.social_skills = min(100, max(0, self.social_skills + social_skills))
+        self.verbal_skills = min(100, max(0, self.verbal_skills + verbal_skills))
+        self.other_skills = min(100, max(0, self.other_skills + other_skills))
+        self.wealth = self.wealth + wealth
+        self.karma = min(100, max(-100, self.karma + karma))
+        self.relationship = min(100, max(0, self.relationship + relationship))
+
+    def is_game_over(self):
+        if self.health <= 0:
+            print("\\nGame Over: You have passed away due to poor health.")
+            return True
+        if self.age >= 80:
+            print("\\nCongratulations! You have reached the age of 80. Here's your life summary:")
+            return True
+        return False
+
+    def add_item(self, item):
+        self.items.append(item)
+        print(f"You bought a {item['name']}. {item['description']}")
+
+class PathwaysGame:
+
+    def get_valid_input(self, prompt_text, valid_options):
+        choice = input(prompt_text)
+        while choice not in valid_options:
+            print("Invalid choice. Please select a valid option.")
+            choice = input(prompt_text)
+        return choice
+
+    def __init__(self):
+        print("Welcome to Pathways: The Journey of Life!")
+        name = input("Enter your character's name: ")
+        self.player = Player(name)
+        self.run_game()
+
+    def run_game(self):
+        while not self.player.is_game_over():
+            self.player.display_stats()
+            self.player.age_up()
+
+            if self.player.turns != 0 and self.player.turns % 37 == 0:
+                self.major_decision()
+
+            if self.player.turns != 0 and self.player.turns % random.randint(14, 24) == 0:
+                self.random_scenario()
+
+            if self.player.karma == 100 and self.player.wealth > 1000 and self.player.relationship == 0:
+                self.date_option()
+
+            self.show_menu()
+
+            if random.randint(1, 10) == 1 and self.player.turns > 0:
+                self.random_event()
+
+    def major_decision(self):
+        print("\\nYou have reached a major milestone. Choose a new direction for your life:")
+        print("1. Continue as a Student (Focus on studies, lower wealth gains, better skill increments)")
+        print("2. Get a Full-Time Job (Steady wealth gain, moderate skill gains)")
+        print("3. Start a Business (Requires initial investment, can yield higher wealth later)")
+        print("4. Travel the World (Requires wealth, increases happiness and social skills)")
+
+        choice = self.get_valid_input("Choose an option (1-4): ", ['1', '2', '3', '4'])
+
+        if choice == "1":
+            self.player.path = "student"
+            print("You chose to continue your studies, focusing on your academics and future education.")
+        elif choice == "2":
+            self.player.path = "job"
+            print("You chose to get a full-time job. This will give you a more stable income.")
+        elif choice == "3":
+            if self.player.wealth < 500:
+                print("You don't have enough wealth to start a business. You remain in your current path.")
+            else:
+                self.player.wealth -= 500
+                self.player.path = "business"
+                print("You invested 500 wealth into a small startup. It's risky, but it may pay off in the long run.")
+        elif choice == "4":
+            if self.player.wealth < 300:
+                print("You cannot afford to travel the world right now. You remain in your current path.")
+            else:
+                self.player.path = "travel"
+                print("You chose to travel the world, exploring new cultures and experiences.")
+
+    def show_menu(self):
+        print("\\nWhat would you like to do this month?")
+        print("0. Show Status (0 months)")
+        print("1. Study (6 months, improves skills, small happiness gain if health & happiness are decent)")
+        print("2. Work Part-Time (6 months, earn some money, might reduce happiness if already stressed)")
+        print("3. Socialize (2 months, improve happiness and social skills)")
+        print("4. Exercise (2 months, improve health and small happiness, dependent on current health)")
+        print("5. Rest (3 months, slight health and happiness regain)")
+        print("6. Buy Items (1 month, if you have enough wealth)")
+        if self.player.age >= 18:
+            print("7. Go on Vacation (5 months, +happiness, -wealth if you can afford it)")
+            print("8. Spend Time with Partner (3 months, if you have one)")
+            print("9. Network for Career Opportunities (4 months, improves social skills/karma)")
+
+        valid_opts = ['0','1','2','3','4','5','6']
+        if self.player.age >= 18:
+            valid_opts.extend(['7','8','9'])
+
+        choice = self.get_valid_input("Choose an activity: ", valid_opts)
+        print("\\n")
+        low_health_penalty = 1 if self.player.health < 30 else 0
+        low_happiness_penalty = 1 if self.player.happiness < 20 else 0
+
+        if choice == "0":
+            return
+        elif choice == "1":
+            self.player.turns += 6
+            self.player.months += 6
+            self.study()
+        elif choice == "2":
+            self.player.turns += 6
+            self.player.months += 6
+            base_earn = 100
+            if self.player.path == "business":
+                base_earn = 150
+            if self.player.path == "student":
+                base_earn = 80
+            happiness_change = -5 if self.player.happiness > 25 else -2
+            self.player.update_stats(wealth=base_earn, happiness=happiness_change)
+            print(f"You worked part-time and earned {base_earn} wealth. Work was a bit stressful.")
+        elif choice == "3":
+            self.player.turns += 2
+            self.player.months += 2
+            social_gain = 5 - low_health_penalty - low_happiness_penalty
+            happy_gain = 10 - (low_happiness_penalty * 2)
+            self.player.update_stats(happiness=happy_gain, social_skills=social_gain)
+            print("You socialized, feeling happier and improving your social skills.")
+        elif choice == "4":
+            self.player.turns += 2
+            self.player.months += 2
+            self.exercise()
+        elif choice == "5":
+            self.player.turns += 3
+            self.player.months += 3
+            health_gain = 2 + (2 if self.player.health < 50 else 0)
+            happiness_gain = 2
+            self.player.update_stats(health=health_gain, happiness=happiness_gain)
+            print("You took some time to rest, feeling a bit healthier and happier.")
+        elif choice == "6":
+            self.buy_items()
+        elif choice == "7" and self.player.age >= 18:
+            if self.player.wealth < 200:
+                print("You don't have enough wealth to go on vacation.")
+                return
+            self.player.turns += 5
+            self.player.months += 5
+            happy_gain = 20 - low_happiness_penalty * 5
+            self.player.update_stats(happiness=happy_gain, wealth=-200)
+            print("You went on vacation, spending 200 wealth but returning much happier.")
+        elif choice == "8" and self.player.age >= 18:
+            self.player.turns += 3
+            self.player.months += 3
+            if self.player.relationship > 0:
+                rel_gain = 10
+                cost = -50 if self.player.wealth >= 50 else 0
+                if cost == 0:
+                    print("You didn't have enough wealth to buy nice things, but you still spent quality time.")
+                self.player.update_stats(relationship=rel_gain, wealth=cost)
+                print("You spent quality time with your partner, improving your relationship.")
+            else:
+                print("You don't have a partner to spend time with.")
+        elif choice == "9" and self.player.age >= 18:
+            self.player.turns += 4
+            self.player.months += 4
+            self.player.update_stats(karma=5, social_skills=5 - low_health_penalty)
+            print("You attended a networking event and met influential people, boosting your social skills and karma.")
+        else:
+            print("Invalid choice. Please select a valid activity.")
+
+    def study(self):
+        print("Choose a field of study:")
+        print("1. Mathematics")
+        print("2. Social Sciences")
+        print("3. Literature")
+        print("4. General Studies")
+        study_choice = self.get_valid_input("Choose a field (1-4): ",
+                                            ['1', '2', '3', '4'])
+        print("\\n")
+        skill_gain = 5
+        if 'Book' in [item['name'] for item in self.player.items]:
+            skill_gain = int(skill_gain * 1.2)
+        if self.player.happiness < 20 or self.player.health < 30:
+            skill_gain = max(1, skill_gain - 2)
+        happy_gain = 0
+        if self.player.happiness > 50 and self.player.health > 50:
+            happy_gain = 2
+        if study_choice == "1":
+            self.player.update_stats(math_skills=skill_gain, happiness=happy_gain)
+            print("You studied Mathematics and improved your math skills.")
+        elif study_choice == "2":
+            self.player.update_stats(social_skills=skill_gain, happiness=happy_gain)
+            print("You studied Social Sciences and improved your social skills.")
+        elif study_choice == "3":
+            self.player.update_stats(verbal_skills=skill_gain, happiness=happy_gain)
+            print("You studied Literature and improved your verbal skills.")
+        elif study_choice == "4":
+            self.player.update_stats(other_skills=skill_gain, happiness=happy_gain)
+            print("You studied General Studies and improved your overall skills.")
+
+    def exercise(self):
+        health_boost_base = 5
+        if self.player.health < 30:
+            health_boost_base = 3
+        if 'Gym Membership' in [item['name'] for item in self.player.items]:
+            health_boost_base = int(health_boost_base * 1.1)
+
+        if self.player.turns - self.player.last_exercise_turn < 6:
+            self.player.update_stats(health=health_boost_base, happiness=1)
+            print("You did some light exercise and felt slightly healthier and happier.")
+        else:
+            print("\\nChoose a type of exercise:")
+            print("1. Yoga (Increases health moderately and happiness)")
+            print("2. Weight Training (Increases health significantly, no happiness change)")
+            print("3. Running (Good for health and small happiness boost)")
+            exercise_choice = self.get_valid_input("Choose a type of exercise (1-3): ", ['1', '2', '3'])
+            if exercise_choice == "1":
+                self.player.update_stats(health=10, happiness=5)
+                print("You practiced yoga, improving both your physical and mental well-being.")
+            elif exercise_choice == "2":
+                self.player.update_stats(health=15)
+                print("You did weight training, significantly improving your strength and health.")
+            elif exercise_choice == "3":
+                self.player.update_stats(health=10, happiness=3)
+                print("You went for a run, which improved your health and helped reduce stress.")
+            self.player.last_exercise_turn = self.player.turns
+
+    def buy_items(self):
+        print("\\nItems available for purchase:")
+        items = [{
+            "name": "Book",
+            "cost": 100,
+            "description": "Increases study yield by 20%."
+        }, {
+            "name": "Gym Membership",
+            "cost": 150,
+            "description": "Increases exercise yield by 10%."
+        }, {
+            "name": "Gift for Partner",
+            "cost": 50,
+            "description": "Helps maintain a good relationship if you have a partner."
+        }, {
+            "name": "Online Course Subscription",
+            "cost": 200,
+            "description": "Increases skill gain for career-related activities by 15%."
+        }, {
+            "name": "Healthy Meal Plan",
+            "cost": 100,
+            "description": "Increases health gain from exercise by 15%."
+        }]
+        for i, item in enumerate(items, 1):
+            print(f"{i}. {item['name']} - Cost: {item['cost']} Wealth - {item['description']}")
+        choice = self.get_valid_input("Choose an item to buy (1-5): ", ['1', '2', '3', '4', '5'])
+        if choice in ["1", "2", "3", "4", "5"]:
+            item = items[int(choice) - 1]
+            if self.player.wealth >= item['cost']:
+                self.player.update_stats(wealth=-item['cost'])
+                self.player.add_item(item)
+                self.player.turns += 1
+                self.player.months += 1
+            else:
+                print("You don't have enough wealth to buy this item.")
+        else:
+            print("Invalid choice.")
+
+    def random_event(self):
+        events = [{
+            "description": "You found a 50 wealth tip while helping someone! (+50 wealth, +5 karma)",
+            "wealth": 50, "karma": 5
+        }, {
+            "description": "You caught a cold and lost some health. (-10 health)",
+            "health": -10
+        }, {
+            "description": "You helped a neighbor with chores. (+5 karma)",
+            "karma": 5
+        }, {
+            "description": "You performed poorly in a hobby, feeling a bit discouraged. (-5 happiness)",
+            "happiness": -5
+        }, {
+            "description": "You volunteered at a local shelter, feeling fulfilled. (+10 karma, +5 happiness)",
+            "karma": 10, "happiness": 5
+        }, {
+            "description": "You received a surprise bonus at work! (+100 wealth)",
+            "wealth": 100
+        }, {
+            "description": "You had an argument with a friend. (-5 happiness)",
+            "happiness": -5
+        }, {
+            "description": "You found a stray kitten and gave it a home. (+10 karma, +10 happiness)",
+            "karma": 10, "happiness": 10
+        }, {
+            "description": "You attended a motivational seminar. (+5 happiness)",
+            "happiness": 5
+        }, {
+            "description": "You discovered a new hobby. (+10 happiness, +5 other skills)",
+            "happiness": 10, "other_skills": 5
+        }, {
+            "description": "You made a new friend at the park. (+5 social skills, +5 happiness)",
+            "social_skills": 5, "happiness": 5
+        }, {
+            "description": "You accidentally broke something valuable. (-50 wealth)",
+            "wealth": -50
+        }, {
+            "description": "You got a small freelance job. (+10 wealth)",
+            "wealth": 10
+        }, {
+            "description": "You lost a small bet with a friend. (-10 wealth, -5 happiness)",
+            "wealth": -10, "happiness": -5
+        }, {
+            "description": "You found a good deal at the market. (+10 wealth)",
+            "wealth": 10
+        }, {
+            "description": "You had a minor accident. (-5 health, -20 wealth)",
+            "health": -5, "wealth": -20
+        }, {
+            "description": "You won a local competition! (+20 wealth, +5 karma)",
+            "wealth": 20, "karma": 5
+        }, {
+            "description": "A relative sent you a gift. (+10 wealth)",
+            "wealth": 10
+        }, {
+            "description": "You got lost in a new place but met interesting people. (+5 happiness, +5 social skills)",
+            "happiness": 5, "social_skills": 5
+        }, {
+            "description": "You helped at a charity event. (+15 karma, +10 social skills)",
+            "karma": 15, "social_skills": 10
+        }]
+        event = random.choice(events)
+        print(f"\\nRandom Event: {event['description']}")
+        self.player.update_stats(
+            health=event.get("health", 0),
+            happiness=event.get("happiness", 0),
+            wealth=event.get("wealth", 0),
+            karma=event.get("karma", 0),
+            social_skills=event.get("social_skills", 0),
+            other_skills=event.get("other_skills", 0),
+        )
+
+    def date_option(self):
+        print("\\nYou have high karma and enough wealth to ask someone out on a date.")
+        print("Would you like to go out on a date? (yes/no)")
+        choice = self.get_valid_input('', ['yes', 'no']).lower()
+        if choice == 'yes':
+            if self.player.wealth < 200:
+                print("You don't have enough wealth to go on a nice date.")
+                return
+            if random.randint(1, 2) == 1:
+                self.player.update_stats(relationship=50, wealth=-200)
+                print("Your date went well, and you are now in a relationship!")
+            else:
+                self.player.update_stats(karma=-50, wealth=-200)
+                print("Unfortunately, your love was one-sided. You spent 200 wealth on the date, and it didn't work out.")
+        else:
+            print("You decided not to go on a date.")
+
+    def random_scenario(self):
+        print("\\nA random scenario is happening...")
+        scenarios = [{
+            "description": "Someone demanded your wallet. Will you comply? (1. Give / 2. Run)",
+            "options": {
+                "1": {"wealth": -min(self.player.wealth, self.player.wealth)},
+                "2": {"health": -self.player.health if random.randint(1,2)==1 else 0}
+            }
+        }, {
+            "description": "You were offered a chance to invest in a promising startup for 500 wealth. (1. Yes / 2. No)",
+            "options": {
+                "1": {"wealth": -500 if self.player.wealth >= 500 else 0, "karma": 10, "happiness":10},
+                "2": {"karma": -5}
+            }
+        }, {
+            "description": "You found a lost dog. Will you help it find its home? (1. Yes / 2. No)",
+            "options": {
+                "1": {"karma": 10, "happiness": 5},
+                "2": {"karma": -10}
+            }
+        }, {
+            "description": "A friend challenges you to a bet of 100 wealth. (1. Accept / 2. Decline)",
+            "options": {
+                "1": {"wealth": 100 if random.randint(1,2)==1 else -100},
+                "2": {"happiness": -5}
+            }
+        }]
+        scenario = random.choice(scenarios)
+        print(scenario["description"])
+        choice = self.get_valid_input("Choose an option: ", ['1','2'])
+        outcome = scenario["options"][choice]
+        if scenario["description"].startswith("You were offered a chance to invest") and choice == '1':
+            if self.player.wealth < 500:
+                print("You don't have enough wealth to invest. You miss the opportunity.")
+                return
+        self.player.update_stats(
+            wealth=outcome.get("wealth",0),
+            health=outcome.get("health",0),
+            happiness=outcome.get("happiness",0),
+            karma=outcome.get("karma",0)
+        )
+        if scenario["description"].startswith("Someone demanded your wallet"):
+            if choice == '1':
+                print("You gave your wallet away. You are safe, but you lost your money.")
+            else:
+                if outcome.get("health",0) < 0:
+                    print("You tried to run but got seriously hurt. Your health took a severe hit.")
+                else:
+                    print("You managed to run away safely without harm.")
+        elif scenario["description"].startswith("You were offered a chance to invest"):
+            if choice == '1':
+                print("You invested in the startup, feeling optimistic about your decision.")
+            else:
+                print("You decided not to invest. You might have missed an opportunity, but you kept your money.")
+        elif scenario["description"].startswith("You found a lost dog"):
+            if choice == '1':
+                print("You helped the lost dog find its home, feeling happy and morally uplifted.")
+            else:
+                print("You ignored the dog, feeling a bit guilty afterward.")
+        elif scenario["description"].startswith("A friend challenges you to a bet"):
+            if choice == '1':
+                if outcome["wealth"] > 0:
+                    print("You won the bet and earned some extra wealth!")
+                else:
+                    print("You lost the bet and some wealth. Better luck next time!")
+            else:
+                print("You declined the bet and felt slightly disappointed.")
+
+def start_game(*args):
+    PathwaysGame()
+
+</script>
+<script>
+document.getElementById("start-btn").addEventListener("click", async () => {
+    const pyodide = await loadPyodide();
+    await pyodide.loadPackagesFromCDN(["random"], true);
+    pyodide.runPython(`
+from js import document
+start_game()
+    `);
+});
+</script>
+</body>
+</html>
